@@ -15,7 +15,7 @@
 #include <GyverPower.h>     // управление питанием Arduino
 
 
-RF24 radio(9, 10);       // "создать" модуль на пинах 9 и 10
+RF24 radio(10, 9);       // "создать" модуль на пинах 9 и 10
 HX711 scale(DOUT, CLK);
 float calibration_factor = -23690;               //Калибровочный фактор
 

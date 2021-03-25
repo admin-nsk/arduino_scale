@@ -19,7 +19,7 @@
 #define PIN_BATTARY A3            // Напряжение питания
 //*************Настройка DHT11***************
 DHT Dht(DHT_PIN, DHT_TYPE);
-RF24 Radio(NRF24_CE_PIN, NRF24_CSN_PIN);       // "создать" модуль на пинах 9 и 10
+RF24 NRF(NRF24_CE_PIN, NRF24_CSN_PIN);       // "создать" модуль на пинах 9 и 10
 HX711 Scale(HX711_DOUT_PIN, HX711_CLK_PIN);
 const float CALIBRATION_FACTOR = -23690;               //Калибровочный фактор
 
@@ -39,7 +39,7 @@ float weight;
 float charge;
 float temp;
 float humidity;
-} sendData;
+} data;
 
 //**********Сброс значения памяти*************
 float ROMinit(){
@@ -55,10 +55,10 @@ float ROMinit(){
 void GetScale(){
   float differenceWight;
   if (flgInitScale == true){
-	differenceWight =  fabs(sendData.weight) - Scale.get_units(50);
+	differenceWight =  fabs(data.weight) - Scale.get_units(50);
 	if (differenceWight > 0.05 || differenceWight < -0.05){
-		sendData.weight = Scale.get_units(50);
-		EEPROM.put(10, sendData.weight);
+		data.weight = Scale.get_units(50);
+		EEPROM.put(10, data.weight);
 		//Serial.println (String (differenceWight) + " кг. Разница!");
 		//Serial.print (String (sendData.weight) + " кг. Записано в память!");
 		//Serial.println ("");
@@ -69,10 +69,10 @@ void GetScale(){
     }
   }
   else{
-    differenceWight = fabs(sendData.weight) - fabs(weightRAMInit + Scale.get_units(50));
+    differenceWight = fabs(data.weight) - fabs(weightRAMInit + Scale.get_units(50));
     if (differenceWight > 0.05 || differenceWight < -0.05){
-		sendData.weight = weightRAMInit + Scale.get_units(50);
-		EEPROM.put(10, sendData.weight);
+		data.weight = weightRAMInit + Scale.get_units(50);
+		EEPROM.put(10, data.weight);
 		//Serial.println (String (differenceWight) + " кг. Разница!");
 		//Serial.println (String (sendData.weight) + " кг. Сумма записана в память!");
 		//Serial.println ("");
@@ -88,7 +88,7 @@ void GetScale(){
 //*************Измерение напряжения на батареи***********************************
 void GetCharge (){
   const float K = 2*1.95;
-  sendData.charge = K*4.5f/1024*analogRead(PIN_BATTARY);
+  data.charge = K*4.5f/1024*analogRead(PIN_BATTARY);
  }
 //----------------------------------------------------------------------------------------------
 
@@ -99,19 +99,19 @@ void SendData(){
   structData answer;
   int counter = 0;
   intscl = weightInRAM * 100;
-  Radio.powerUp();		//включение NRF
+  NRF.powerUp();		//включение NRF
   delay(1000);
   while (counter < 50){
     //Serial.println(counter);
     //Serial.println(intscl);
-    Radio.write(&sendData, sizeof(sendData));
-    if(!Radio.available()){                     //если получаем пустой ответ
+    NRF.write(&data, sizeof(data));
+    if(!NRF.available()){                     //если получаем пустой ответ
     }
 	else{  
-		if(Radio.available()) {                      // если в ответе что-то есть
-        Radio.read( &answer, 2);                  // читаем
+		if(NRF.available()) {                      // если в ответе что-то есть
+        NRF.read( &answer, 2);                  // читаем
 		//Serial.print("Ответ "); //Serial.println(answer);
-			if (sendData == answer){
+			if (data == answer){
 				counter = 50;
 			}
 		}
@@ -119,7 +119,7 @@ void SendData(){
 	delay(1000);
 	counter++;
   }
-  Radio.powerDown(); 		//отключение NRF
+  NRF.powerDown(); 		//отключение NRF
 }
 //--------------------------------------------------------------------------------------------
 
@@ -127,8 +127,8 @@ void SendData(){
 void GetTemp()
 {
   //Serial.println("GetTempIN()>>>>>>>>>>>>>>");
-  sendData.temp = Dht.readTemperature();
-  sendData.humidity = Dht.readHumidity();
+  data.temp = Dht.readTemperature();
+  data.humidity = Dht.readHumidity();
   //Serial.print("TempIN: ");Serial.println(sendData.temp);
   //Serial.print("HumidityIN: ");Serial.println(sendData.humidity);
  }
@@ -155,19 +155,19 @@ void setup() {
   Scale.tare();                         //Сброс весов в 0
   
   //---Настройка модуля---
-  Radio.begin(); //активировать модуль
-  Radio.setAutoAck(1);         //режим подтверждения приёма, 1 вкл 0 выкл
-  Radio.setRetries(0, 15);    //(время между попыткой достучаться, число попыток)
-  Radio.enableAckPayload();    //разрешить отсылку данных в ответ на входящий сигнал
-  Radio.setPayloadSize(32);     //размер пакета, в байтах
-  Radio.openWritingPipe(address[1]);   //мы - труба 0, открываем канал для передачи данных
-  Radio.setChannel(0x65);  //выбираем канал (в котором нет шумов!)
-  Radio.setPALevel (RF24_PA_MAX); //уровень мощности передатчика. На выбор RF24_PA_MIN, RF24_PA_LOW, RF24_PA_HIGH, RF24_PA_MAX
-  Radio.setDataRate (RF24_1MBPS); //скорость обмена. На выбор RF24_2MBPS, RF24_1MBPS, RF24_250KBPS
+  NRF.begin(); //активировать модуль
+  NRF.setAutoAck(1);         //режим подтверждения приёма, 1 вкл 0 выкл
+  NRF.setRetries(0, 15);    //(время между попыткой достучаться, число попыток)
+  NRF.enableAckPayload();    //разрешить отсылку данных в ответ на входящий сигнал
+  NRF.setPayloadSize(32);     //размер пакета, в байтах
+  NRF.openWritingPipe(address[1]);   //мы - труба 0, открываем канал для передачи данных
+  NRF.setChannel(0x65);  //выбираем канал (в котором нет шумов!)
+  NRF.setPALevel (RF24_PA_MAX); //уровень мощности передатчика. На выбор RF24_PA_MIN, RF24_PA_LOW, RF24_PA_HIGH, RF24_PA_MAX
+  NRF.setDataRate (RF24_1MBPS); //скорость обмена. На выбор RF24_2MBPS, RF24_1MBPS, RF24_250KBPS
   //должна быть одинакова на приёмнике и передатчике!
   //при самой низкой скорости имеем самую высокую чувствительность и дальность!!
-  Radio.powerUp(); //начать работу
-  Radio.stopListening();  //не слушаем радиоэфир, мы передатчик
+  NRF.powerUp(); //начать работу
+  NRF.stopListening();  //не слушаем радиоэфир, мы передатчик
 }
 
 void loop() {
@@ -177,7 +177,7 @@ void loop() {
 	}
 	if (digitalRead(3) == HIGH){           //Если кнопка сброса нажата
 		//Serial.println("Нажата кнопка сброса !");
-		sendData.weight = ROMinit();
+		data.weight = ROMinit();
 		flgInitScale = true;         //Устанавливаем Флаг выбора программы измерений
 	}
 	//Измерение веса
@@ -187,7 +187,7 @@ void loop() {
 	if (millis() - myTimer1 >= 600000 || millis() < 600000) {   // таймер на 10 мин
 		myTimer1 = millis();              // сброс таймера
 		//Serial.println("10m");
-		SendData(sendData);
+		SendData(data);
 	}
 	if (millis() > 600000){
 		//Serial.println("Sleep!");

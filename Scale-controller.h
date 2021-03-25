@@ -18,7 +18,7 @@
 #define HX711_CLK_PIN  A1                         // Подключение HX711
 #define PIN_BATTARY A3            // Напряжение питания
 //*************Настройка DHT11***************
-DHT Dht(DHT_PIN, DHT_TYPE);
+DHT SensorDHT(DHT_PIN, DHT_TYPE);
 RF24 NRF(NRF24_CE_PIN, NRF24_CSN_PIN);       // "создать" модуль на пинах 9 и 10
 HX711 Scale(HX711_DOUT_PIN, HX711_CLK_PIN);
 const float CALIBRATION_FACTOR = -23690;               //Калибровочный фактор
@@ -29,57 +29,54 @@ float weightRAMInit;
 bool flgInitScale = false;          //Флаг выбора программы измерений
 bool flgSetup = true;
 
-float temp_IN = 0;
-//float humidity_IN = 0;
-
 uint32_t myTimer1 = 0;   //Таймеры для loop
 
 struct  structData {
-float weight;
-float charge;
-float temp;
-float humidity;
+  float weight;
+  float currentVoltage;
+  float temp;
+  float humidity;
 } data;
 
 //**********Сброс значения памяти*************
-float ROMinit(){
+void ROMinit(){
   EEPROM.put(10, 0.00);
   weightRAMInit = 0.00;
   Scale.tare();
   //Serial.println ("Весы и пямять сброшены!");
-  return (0.00);
+  data.weight = 0;
 }
 //--------------------------------------------------------------------
 
 //********Измерение веса и запись в память************
 void GetScale(){
-  float differenceWight;
+  float _differenceWight;
   if (flgInitScale == true){
-	differenceWight =  fabs(data.weight) - Scale.get_units(50);
-	if (differenceWight > 0.05 || differenceWight < -0.05){
+	_differenceWight =  fabs(data.weight) - Scale.get_units(50);
+	if (_differenceWight > 0.05 || _differenceWight < -0.05){
 		data.weight = Scale.get_units(50);
 		EEPROM.put(10, data.weight);
-		//Serial.println (String (differenceWight) + " кг. Разница!");
-		//Serial.print (String (sendData.weight) + " кг. Записано в память!");
+		//Serial.println (String (_differenceWight) + " кг. Разница!");
+		//Serial.print (String (data.weight) + " кг. Записано в память!");
 		//Serial.println ("");
     }
     else{
-      //Serial.println (String (differenceWight) + " кг. Разница!");
-	  //Serial.println (String (sendData.weight) + " кг. Вес!");
+      //Serial.println (String (_differenceWight) + " кг. Разница!");
+	  //Serial.println (String (data.weight) + " кг. Вес!");
     }
   }
   else{
-    differenceWight = fabs(data.weight) - fabs(weightRAMInit + Scale.get_units(50));
-    if (differenceWight > 0.05 || differenceWight < -0.05){
+    _differenceWight = fabs(data.weight) - fabs(weightRAMInit + Scale.get_units(50));
+    if (_differenceWight > 0.05 || _differenceWight < -0.05){
 		data.weight = weightRAMInit + Scale.get_units(50);
 		EEPROM.put(10, data.weight);
-		//Serial.println (String (differenceWight) + " кг. Разница!");
-		//Serial.println (String (sendData.weight) + " кг. Сумма записана в память!");
+		//Serial.println (String (_differenceWight) + " кг. Разница!");
+		//Serial.println (String (data.weight) + " кг. Сумма записана в память!");
 		//Serial.println ("");
     }
     else{
-		//Serial.println (String (differenceWight) + " кг. Разница!");
-		//Serial.println (String (sendData.weight) + " кг. Вес!");
+		//Serial.println (String (_differenceWight) + " кг. Разница!");
+		//Serial.println (String (data.weight) + " кг. Вес!");
     }
   } 
 }
@@ -88,7 +85,7 @@ void GetScale(){
 //*************Измерение напряжения на батареи***********************************
 void GetCharge (){
   const float K = 2*1.95;
-  data.charge = K*4.5f/1024*analogRead(PIN_BATTARY);
+  data.currentVoltage = K*4.5f/1024*analogRead(PIN_BATTARY);
  }
 //----------------------------------------------------------------------------------------------
 
@@ -96,28 +93,27 @@ void GetCharge (){
 //***************Отправка данных**************************************************
 void SendData(){
   //-----Отправка веса-----
-  structData answer;
-  int counter = 0;
-  intscl = weightInRAM * 100;
+  structData _answer;
+  int _counter = 0;
   NRF.powerUp();		//включение NRF
   delay(1000);
-  while (counter < 50){
+  while (_counter < 50){
     //Serial.println(counter);
-    //Serial.println(intscl);
+    //Serial.println(data.weight);
     NRF.write(&data, sizeof(data));
     if(!NRF.available()){                     //если получаем пустой ответ
     }
-	else{  
-		if(NRF.available()) {                      // если в ответе что-то есть
-        NRF.read( &answer, 2);                  // читаем
-		//Serial.print("Ответ "); //Serial.println(answer);
-			if (data == answer){
-				counter = 50;
-			}
-		}
+	  else{  
+      if(NRF.available()) {                      // если в ответе что-то есть
+          NRF.read( &_answer, 2);                  // читаем
+      //Serial.print("Ответ "); //Serial.println(_answer);
+        if (data == _answer){
+          _counter = 50;
+        }
+      }
     }  
 	delay(1000);
-	counter++;
+	_counter++;
   }
   NRF.powerDown(); 		//отключение NRF
 }
@@ -127,8 +123,8 @@ void SendData(){
 void GetTemp()
 {
   //Serial.println("GetTempIN()>>>>>>>>>>>>>>");
-  data.temp = Dht.readTemperature();
-  data.humidity = Dht.readHumidity();
+  data.temp = SensorDHT.readTemperature();
+  data.humidity = SensorDHT.readHumidity();
   //Serial.print("TempIN: ");Serial.println(sendData.temp);
   //Serial.print("HumidityIN: ");Serial.println(sendData.humidity);
  }
@@ -144,7 +140,7 @@ void setup() {
   //---Вход для измерения напряжения---
   pinMode(PIN_BATTARY, INPUT);
   //--Инициализация датчика температуры
-  Dht.begin();
+  SensorDHT.begin();
     
   //---Настройка весов---
   pinMode(3, INPUT);                   //PIN подключения кнопки
@@ -177,7 +173,7 @@ void loop() {
 	}
 	if (digitalRead(3) == HIGH){           //Если кнопка сброса нажата
 		//Serial.println("Нажата кнопка сброса !");
-		data.weight = ROMinit();
+		ROMinit();
 		flgInitScale = true;         //Устанавливаем Флаг выбора программы измерений
 	}
 	//Измерение веса

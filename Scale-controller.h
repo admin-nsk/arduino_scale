@@ -52,31 +52,31 @@ void ROMinit(){
 void GetScale(){
   float _differenceWight;
   if (flgInitScale == true){
-	_differenceWight =  fabs(data.weight) - Scale.get_units(50);
-	if (_differenceWight > 0.05 || _differenceWight < -0.05){
-		data.weight = Scale.get_units(50);
-		EEPROM.put(10, data.weight);
-		//Serial.println (String (_differenceWight) + " кг. Разница!");
-		//Serial.print (String (data.weight) + " кг. Записано в память!");
-		//Serial.println ("");
+	  _differenceWight =  fabs(data.weight) - Scale.get_units(50);
+    if (_differenceWight > 0.05 || _differenceWight < -0.05){
+      data.weight = Scale.get_units(50);
+      EEPROM.put(10, data.weight);
+      //Serial.println (String (_differenceWight) + " кг. Разница!");
+      //Serial.print (String (data.weight) + " кг. Записано в память!");
+      //Serial.println ("");
     }
     else{
       //Serial.println (String (_differenceWight) + " кг. Разница!");
-	  //Serial.println (String (data.weight) + " кг. Вес!");
+      //Serial.println (String (data.weight) + " кг. Вес!");
     }
   }
   else{
     _differenceWight = fabs(data.weight) - fabs(weightRAMInit + Scale.get_units(50));
     if (_differenceWight > 0.05 || _differenceWight < -0.05){
-		data.weight = weightRAMInit + Scale.get_units(50);
-		EEPROM.put(10, data.weight);
-		//Serial.println (String (_differenceWight) + " кг. Разница!");
-		//Serial.println (String (data.weight) + " кг. Сумма записана в память!");
-		//Serial.println ("");
+      data.weight = weightRAMInit + Scale.get_units(50);
+      EEPROM.put(10, data.weight);
+      //Serial.println (String (_differenceWight) + " кг. Разница!");
+      //Serial.println (String (data.weight) + " кг. Сумма записана в память!");
+      //Serial.println ("");
     }
     else{
-		//Serial.println (String (_differenceWight) + " кг. Разница!");
-		//Serial.println (String (data.weight) + " кг. Вес!");
+      //Serial.println (String (_differenceWight) + " кг. Разница!");
+      //Serial.println (String (data.weight) + " кг. Вес!");
     }
   } 
 }
@@ -84,8 +84,8 @@ void GetScale(){
 
 //*************Измерение напряжения на батареи***********************************
 void GetCharge (){
-  const float K = 2*1.95;
-  data.currentVoltage = K*4.5f/1024*analogRead(PIN_BATTARY);
+  const float _K = 2*1.95;
+  data.currentVoltage = _K*4.5f/1024*analogRead(PIN_BATTARY);
  }
 //----------------------------------------------------------------------------------------------
 
@@ -106,7 +106,7 @@ void SendData(){
 	  else{  
       if(NRF.available()) {                      // если в ответе что-то есть
           NRF.read( &_answer, 2);                  // читаем
-      //Serial.print("Ответ "); //Serial.println(_answer);
+        //Serial.print("Ответ "); //Serial.println(_answer);
         if (data == _answer){
           _counter = 50;
         }
@@ -115,7 +115,7 @@ void SendData(){
 	delay(1000);
 	_counter++;
   }
-  NRF.powerDown(); 		//отключение NRF
+NRF.powerDown(); 		//отключение NRF
 }
 //--------------------------------------------------------------------------------------------
 
@@ -145,7 +145,7 @@ void setup() {
   //---Настройка весов---
   pinMode(3, INPUT);                   //PIN подключения кнопки
   EEPROM.get(10, weightRAMInit);               //Считывание данных с памяти  
-  //Serial.print (String (sclROMInit) + " кг. Прочитано из памяти!");
+  //Serial.print (String (weightRAMInit) + " кг. Прочитано из памяти!");
   //Serial.println ("");
   Scale.set_scale(CALIBRATION_FACTOR);              //Установка колибровочного коэффициента
   Scale.tare();                         //Сброс весов в 0
@@ -154,7 +154,7 @@ void setup() {
   NRF.begin(); //активировать модуль
   NRF.setAutoAck(1);         //режим подтверждения приёма, 1 вкл 0 выкл
   NRF.setRetries(0, 15);    //(время между попыткой достучаться, число попыток)
-  NRF.enableAckPayload();    //разрешить отсылку данных в ответ на входящий сигнал
+  NRF.enableAckPayload();    //разрешит отсылку данных в ответ на входящий сигнал
   NRF.setPayloadSize(32);     //размер пакета, в байтах
   NRF.openWritingPipe(address[1]);   //мы - труба 0, открываем канал для передачи данных
   NRF.setChannel(0x65);  //выбираем канал (в котором нет шумов!)
@@ -169,7 +169,7 @@ void setup() {
 void loop() {
 	//Serial.println("Loop");
 	if (flgSetup == false){
-	delay(1000);
+	  delay(1000);
 	}
 	if (digitalRead(3) == HIGH){           //Если кнопка сброса нажата
 		//Serial.println("Нажата кнопка сброса !");

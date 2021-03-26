@@ -22,13 +22,13 @@
 #include "nRF24L01.h"
 #include "RF24.h"
 
-#define NRF24_CSN_PIN 9
-#define NRF24_CE_PIN 10
+#define NRF24_CSN_PIN 10
+#define NRF24_CE_PIN 9
 #define GSM_RX_PIN 2
 #define GSM_TX_PIN 3
 
 SoftwareSerial SIM800(GSM_TX_PIN, GSM_RX_PIN);                                  // RX, TX GSM
-RF24 NRF(NRF24_CSN_PIN, NRF24_CE_PIN); // "создать" модуль на пинах 9 и 10
+RF24 NRF(NRF24_CE_PIN, NRF24_CSN_PIN); // "создать" модуль на пинах 9 и 10
 
 byte address[][6] = {"1Node","2Node","3Node","4Node","5Node","6Node"};  //возможные номера труб
 
@@ -41,17 +41,16 @@ float weight;
 float currentVoltage;
 float temp;
 float humidity;
+int count;
 } data;
-
-data.currentVoltage = 0
 
 uint32_t RFTimer, RFTimer2;                      //таймер получения данных
 bool flagReciveData = false, flagPowerUp = true, flagAlarmVoltage = false;                     //флаги
 uint32_t myTimer1, myTimer2;   //Таймеры для loop
 
 const int CRITICAL_VOLTAGE = 10;              //Критически низкое напряжение на батарее
-const String ALLOW_PHONE_NUMBERS = "+791345555654, +79615555656, +79135555599";   // Белый список телефонов
-const String ALARM_PHONE = "+791345555654" 
+const String ALLOW_PHONE_NUMBERS = "+79137857684";   // Белый список телефонов
+const String ALARM_PHONE = "+79137857684"; 
 
 String senderPhone;                        // Переменная для хранения номера отправителя
 String textSMS;
@@ -61,7 +60,7 @@ void(* resetFunc) (void) = 0;      //Функция перезагрузки
 //***************************Отправка команды модему******************************
 String SendATCommand(String _ATcommand, bool _waiting) {
   String _resp = "";                                              // Переменная для хранения результата
-  //Serial.println(cmd);                                            // Дублируем команду в монитор порта
+  //Serial.println(_ATcommand);                                            // Дублируем команду в монитор порта
   SIM800.println(_ATcommand);                                            // Отправляем команду модулю SIM
    
   if (_waiting) {                                                  // Если необходимо дождаться ответа...
@@ -79,7 +78,7 @@ String SendATCommand(String _ATcommand, bool _waiting) {
 //***************Функция ожидания ответа и возврата полученного результата***************
 String WaitResponse() {                                           // 
   String _resp = "";                                              // Переменная для хранения результата
-   //Serial.println("Wait...");
+   ////Serial.println("Wait...");
   long _timeout = millis() + 10000;                               // Переменная для отслеживания таймаута (10 секунд)
  
   while (!SIM800.available() && millis() < _timeout)  {};         // Ждем ответа 10 секунд, если пришел ответ или наступил таймаут, то...
@@ -102,8 +101,8 @@ String ScaleSMS(){
   int timeMins = (RFTimer2 % 3600ul) / 60ul;
   int timeSecs = (RFTimer2 % 3600ul) % 60ul;
   textSMS = ("Ves: " + String (rdScale, 2) + " kg. - " + timeHours + "h.  " + timeMins + "m. " + timeSecs + "s.");
-  //Serial.print ("msgphone:" + msgphone);
-  //Serial.print (outSMS);
+  //Serial.print ("msgphone:" + senderPhone);
+  //Serial.print (textSMS);
   return textSMS;
 }
 //-----------------------------------------------------------------------------------
@@ -112,9 +111,7 @@ String ScaleSMS(){
 //*************************Функция обаработки запроса в СМС***************************
 void SMSSelect(String _textReceivedSMS){
   //Serial.println("SMSSelect!"); 
-  //int inSms = sms.toInt();
-//  Serial.println(_textReceivedSMS);
-   //switch (inSms) {
+  //Serial.println(_textReceivedSMS);
 //+++++++++Запрос веса+++++++++++++
   
   if (_textReceivedSMS == "1" || _textReceivedSMS == "v" || _textReceivedSMS == "V")
@@ -141,14 +138,14 @@ void SMSSelect(String _textReceivedSMS){
 //+++++++++Напряжение на весах+++++++++++++
   if (_textReceivedSMS == "4" || _textReceivedSMS == "u" || _textReceivedSMS == "U")
   {
-    //Serial.println("Запрос напряжения");
+    ////Serial.println("Запрос напряжения");
     textSMS = ("Napryagenie na vesah: " + String(data.currentVoltage) + "V.");
     SendSMS(senderPhone, textSMS);
   }
 //+++++++++Напряжение на SIM800+++++++++++++
   if (_textReceivedSMS == "5" || _textReceivedSMS == "U800")
   {
-    //Serial.println("Запрос напряжения!");
+    ////Serial.println("Запрос напряжения!");
     textSMS = SendATCommand("AT+CBC", true);
     SendSMS(senderPhone, textSMS); 
   }
@@ -197,7 +194,6 @@ void CheckSMS (){
 void ParseSMS(String _receivedSMS) {                                   
   String _msgHeader  = "";
   String _textReceivedSMS    = "";
-  //String msgphone   = "";
   //Serial.println("Parse!");
   _receivedSMS = _receivedSMS.substring(_receivedSMS.indexOf("+CMGR: "));
   _msgHeader = _receivedSMS.substring(0, _receivedSMS.indexOf("\r"));            // Выдергиваем телефон
@@ -239,7 +235,7 @@ void ReadDataScl (){
   while(NRF.available()){    // слушаем эфир со всех труб
     NRF.read( &data, sizeof(data) );         // чиатем входящий сигнал
     NRF.writeAckPayload(1,&data, sizeof(data) );  // отправляем обратно то что приняли
-    //Serial.print("Recieved: "); //Serial.println(data);
+    //Serial.print("Recieved: "); //Serial.println(data.count);
     //Serial.print("weight: ");//Serial.println(data.weight);
     // получаем из миллиса часы, минуты и секунды работы программы 
     // часы не ограничены, т.е. аптайм
@@ -253,7 +249,7 @@ void ReadDataScl (){
 
 //******************Отправка сообщения при долгом отсутствии сигнала от весов************
 void ALARM (){ 
-  //Serial.println("ALARM"); 
+  ////Serial.println("ALARM"); 
   RFTimer2 = (millis() - RFTimer) / 1000ul;  
   int _timerHours = (RFTimer2 / 3600ul);
   if (_timerHours >= 2 && flagReciveData == false){  // Если входящего сигнала нет больше 2х часов
@@ -281,23 +277,16 @@ void setup() {
   Serial.begin(9600);                                         // Скорость обмена данными с компьютером
   SIM800.begin(9600);                                         // Скорость обмена данными с модемом
     
-  //Serial.println("Start!");
-   
+  ////Serial.println("Start!");
+   data.currentVoltage = 0;
   //---Команды настройки GSM при каждом запуске---
   SendATCommand("AT", true);                                  // Отправили AT для настройки скорости обмена данными
   SendATCommand("AT+CMGDA=\"DEL ALL\"", true);               // Удаляем все SMS, чтобы не забивать память
   SendATCommand("AT+CLIP=1", true);             // Включаем АОН
   SendATCommand("AT+DDET=1", true);             // Включаем DTMF
   SendATCommand("AT+CMGF=1;&W", true);                        // Включаем текстовый режима SMS (Text mode) и сразу сохраняем значение (AT&W)!
-  
-  //---Настройка ESP---
-  /*SendATCommand("AT+CWMODE=1", true, false);                                  //  Режим работы ESP station  mode
-  SendATCommand("AT+CWJAP=" + wifiSSID + "," + wifipassword + "", true, false);           // Данные WiFi
-  */
  
-  
   //---Настройка nRF24L01----
-  Serial.begin(9600); //открываем порт для связи с ПК
   NRF.begin(); //активировать модуль
   NRF.setAutoAck(1);         //режим подтверждения приёма, 1 вкл 0 выкл
   NRF.setRetries(0,15);     //(время между попыткой достучаться, число попыток)
@@ -324,7 +313,7 @@ void loop() {
     myTimer1 = millis();              // сброс таймера
     ReadDataScl();
     ALARM ();
-    ////Serial.println("1s!");
+    //Serial.println("1s!");
   }
   if (millis() - myTimer2 >= 60000) {   // таймер на 1 мин
     myTimer2 = millis();              // сброс таймера

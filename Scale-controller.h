@@ -5,7 +5,6 @@
 #include "HX711.h"
 #include <EEPROM.h>     // Библиотека для работы с энергонезависимой памятью
 #include <SPI.h>          // библиотека для работы с шиной SPI
-#include "nRF24L01.h"     // библиотека радиомодуля
 #include "RF24.h"         // ещё библиотека радиомодуля
 #include <GyverPower.h>     // управление питанием Arduino
 #include "DHT.h"    //Бибилотека для работы с DHT11
@@ -110,8 +109,9 @@ void SendData(){
 	  else{  
       if(NRF.available()) {                      // если в ответе что-то есть
         NRF.read( &_answer, sizeof(_answer));                  // читаем
-        Serial.print("Ответ "); Serial.println(_answer.count);
-        if (data.count == _answer.count){
+        Serial.print("Ответ "); Serial.println(_answer.weight);
+        Serial.println(_counter);
+        if (data.weight == _answer.weight){
           _counter = 50;
         }
       }
@@ -119,7 +119,7 @@ void SendData(){
 	delay(1000);
 	_counter++;
   }
-NRF.powerDown(); 		//отключение NRF
+  NRF.powerDown(); 		//отключение NRF
 }
 //--------------------------------------------------------------------------------------------
 

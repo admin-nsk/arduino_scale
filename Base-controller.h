@@ -305,10 +305,13 @@ void SIMinit()
   Serial.println("SIMInit>>>>>");
   SIM800.begin(9600);                                         // Скорость обмена данными с модемом
 
+  ////Serial.println("Start!");
+   data.currentVoltage = 0;
+  //---Команды настройки GSM при каждом запуске---
   SendATCommand("AT", true);                                  // Отправили AT для настройки скорости обмена данными
   SendATCommand("AT+CMGDA=\"DEL ALL\"", true);               // Удаляем все SMS, чтобы не забивать память
-  _response = SendATCommand("AT+CLIP=1", true);             // Включаем АОН
-  _response = SendATCommand("AT+DDET=1", true);             // Включаем DTMF
+  SendATCommand("AT+CLIP=1", true);             // Включаем АОН
+  SendATCommand("AT+DDET=1", true);             // Включаем DTMF
   SendATCommand("AT+CMGF=1;&W", true);                        // Включаем текстовый режима SMS (Text mode) и сразу сохраняем значение (AT&W)!
 }
 

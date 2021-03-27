@@ -5,13 +5,14 @@
 #include "HX711.h"
 #include <EEPROM.h>     // Библиотека для работы с энергонезависимой памятью
 #include <SPI.h>          // библиотека для работы с шиной SPI
+#include "nRF24L01.h"     // библиотека радиомодуля
 #include "RF24.h"         // ещё библиотека радиомодуля
 #include <GyverPower.h>     // управление питанием Arduino
 #include "DHT.h"    //Бибилотека для работы с DHT11
 
 #define NRF24_CSN_PIN 9
 #define NRF24_CE_PIN 10
-#define DHT_PIN 4
+#define DHT_PIN 5
 #define DHT_TYPE DHT11
 #define HX711_DOUT_PIN  A0                        // Подключение HX711
 #define HX711_CLK_PIN  A1                         // Подключение HX711
@@ -35,17 +36,14 @@ struct  structData {
   float currentVoltage;
   float temp;
   float humidity;
-  int count;
 } data;
-
-
 
 //**********Сброс значения памяти*************
 void ROMinit(){
   EEPROM.put(10, 0.00);
   weightRAMInit = 0.00;
   Scale.tare();
-  // Serial.println ("Весы и пямять сброшены!");
+  //Serial.println ("Весы и пямять сброшены!");
   data.weight = 0;
 }
 //--------------------------------------------------------------------
@@ -58,13 +56,13 @@ void GetScale(){
     if (_differenceWight > 0.05 || _differenceWight < -0.05){
       data.weight = Scale.get_units(50);
       EEPROM.put(10, data.weight);
-      // Serial.println (String (_differenceWight) + " кг. Разница!");
-      // Serial.print (String (data.weight) + " кг. Записано в память!");
-      // Serial.println ("");
+      //Serial.println (String (_differenceWight) + " кг. Разница!");
+      //Serial.print (String (data.weight) + " кг. Записано в память!");
+      //Serial.println ("");
     }
     else{
-      // Serial.println (String (_differenceWight) + " кг. Разница!");
-      // Serial.println (String (data.weight) + " кг. Вес!");
+      //Serial.println (String (_differenceWight) + " кг. Разница!");
+      //Serial.println (String (data.weight) + " кг. Вес!");
     }
   }
   else{
@@ -72,13 +70,13 @@ void GetScale(){
     if (_differenceWight > 0.05 || _differenceWight < -0.05){
       data.weight = weightRAMInit + Scale.get_units(50);
       EEPROM.put(10, data.weight);
-      // Serial.println (String (_differenceWight) + " кг. Разница!");
-      // Serial.println (String (data.weight) + " кг. Сумма записана в память!");
-      // Serial.println ("");
+      //Serial.println (String (_differenceWight) + " кг. Разница!");
+      //Serial.println (String (data.weight) + " кг. Сумма записана в память!");
+      //Serial.println ("");
     }
     else{
-      // Serial.println (String (_differenceWight) + " кг. Разница!");
-      // Serial.println (String (data.weight) + " кг. Вес!");
+      //Serial.println (String (_differenceWight) + " кг. Разница!");
+      //Serial.println (String (data.weight) + " кг. Вес!");
     }
   } 
 }
@@ -100,18 +98,16 @@ void SendData(){
   NRF.powerUp();		//включение NRF
   delay(1000);
   while (_counter < 50){
-    Serial.println(_counter);
-    Serial.println(data.weight);
-    data.count = _counter;
+    //Serial.println(counter);
+    //Serial.println(data.weight);
     NRF.write(&data, sizeof(data));
     if(!NRF.available()){                     //если получаем пустой ответ
     }
 	  else{  
       if(NRF.available()) {                      // если в ответе что-то есть
         NRF.read( &_answer, sizeof(_answer));                  // читаем
-        Serial.print("Ответ "); Serial.println(_answer.weight);
-        Serial.println(_counter);
-        if (data.weight == _answer.weight){
+        Serial.print("Ответ "); Serial.println(_answer.count);
+        if (data.count == _answer.count){
           _counter = 50;
         }
       }
@@ -119,28 +115,28 @@ void SendData(){
 	delay(1000);
 	_counter++;
   }
-  NRF.powerDown(); 		//отключение NRF
+NRF.powerDown(); 		//отключение NRF
 }
 //--------------------------------------------------------------------------------------------
 
 //*************************Получение температуры и влажности с DHT11***************************
 void GetTemp()
 {
-  // Serial.println("GetTempIN()>>>>>>>>>>>>>>");
+  //Serial.println("GetTempIN()>>>>>>>>>>>>>>");
   data.temp = SensorDHT.readTemperature();
   data.humidity = SensorDHT.readHumidity();
-  // Serial.print("TempIN: ");Serial.println(data.temp);
-  // Serial.print("HumidityIN: ");Serial.println(data.humidity);
+  //Serial.print("TempIN: ");Serial.println(sendData.temp);
+  //Serial.print("HumidityIN: ");Serial.println(sendData.humidity);
  }
 //-----------------------------------------------------------------------------------
 
 
 void setup() {
   Serial.begin(9600);                                         // Скорость обмена данными с компьютером
-  // Serial.println("Start!");
+  //Serial.println("Start!");
   
   power.autoCalibrate(); // автоматическая калибровка таймера сна (чтобы спал точное время)
-  data.count = 0;
+  
   //---Вход для измерения напряжения---
   pinMode(PIN_BATTARY, INPUT);
   //--Инициализация датчика температуры
@@ -149,8 +145,8 @@ void setup() {
   //---Настройка весов---
   pinMode(3, INPUT);                   //PIN подключения кнопки
   EEPROM.get(10, weightRAMInit);               //Считывание данных с памяти  
-  // Serial.print (String (weightRAMInit) + " кг. Прочитано из памяти!");
-  // Serial.println ("");
+  //Serial.print (String (weightRAMInit) + " кг. Прочитано из памяти!");
+  //Serial.println ("");
   Scale.set_scale(CALIBRATION_FACTOR);              //Установка колибровочного коэффициента
   Scale.tare();                         //Сброс весов в 0
   
@@ -171,25 +167,26 @@ void setup() {
 }
 
 void loop() {
-	Serial.println("Loop");
+	//Serial.println("Loop");
 	if (flgSetup == false){
 	  delay(1000);
 	}
 	if (digitalRead(3) == HIGH){           //Если кнопка сброса нажата
-		// Serial.println("Нажата кнопка сброса !");
+		//Serial.println("Нажата кнопка сброса !");
 		ROMinit();
 		flgInitScale = true;         //Устанавливаем Флаг выбора программы измерений
 	}
+	//Измерение веса
 	GetScale();         //Измерение веса
   GetCharge();
   GetTemp();
 	if (millis() - myTimer1 >= 600000 || millis() < 600000) {   // таймер на 10 мин
 		myTimer1 = millis();              // сброс таймера
-		// Serial.println("10m");
-		SendData();
+		//Serial.println("10m");
+		SendData(data);
 	}
 	if (millis() > 600000){
-		// Serial.println("Sleep!");
+		//Serial.println("Sleep!");
 		flgSetup = false;
 		power.sleepDelay(60000);  // спим 60 секунд 
 	}

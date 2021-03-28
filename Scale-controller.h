@@ -10,13 +10,14 @@
 #include <GyverPower.h>     // управление питанием Arduino
 #include "DHT.h"    //Бибилотека для работы с DHT11
 
-#define NRF24_CSN_PIN 9
-#define NRF24_CE_PIN 10
-#define DHT_PIN 5
+#define DHT_PIN 4 
 #define DHT_TYPE DHT11
 #define HX711_DOUT_PIN  A0                        // Подключение HX711
 #define HX711_CLK_PIN  A1                         // Подключение HX711
 #define PIN_BATTARY A3            // Напряжение питания
+#define NRF24_CSN_PIN 9
+#define NRF24_CE_PIN 10
+
 //*************Настройка DHT11***************
 DHT SensorDHT(DHT_PIN, DHT_TYPE);
 RF24 NRF(NRF24_CE_PIN, NRF24_CSN_PIN);       // "создать" модуль на пинах 9 и 10
@@ -36,6 +37,7 @@ struct  structData {
   float currentVoltage;
   float temp;
   float humidity;
+  int count;
 } data;
 
 //**********Сброс значения памяти*************
@@ -100,14 +102,15 @@ void SendData(){
   while (_counter < 50){
     //Serial.println(counter);
     //Serial.println(data.weight);
+    data.count = _counter;
     NRF.write(&data, sizeof(data));
     if(!NRF.available()){                     //если получаем пустой ответ
     }
 	  else{  
       if(NRF.available()) {                      // если в ответе что-то есть
-        NRF.read( &_answer, sizeof(_answer));                  // читаем
+        NRF.read(&_answer, sizeof(_answer));                  // читаем
         Serial.print("Ответ "); Serial.println(_answer.count);
-        if (data.count == _answer.count){
+        if (data.weight == _answer.weight){
           _counter = 50;
         }
       }
@@ -183,7 +186,7 @@ void loop() {
 	if (millis() - myTimer1 >= 600000 || millis() < 600000) {   // таймер на 10 мин
 		myTimer1 = millis();              // сброс таймера
 		//Serial.println("10m");
-		SendData(data);
+		SendData();
 	}
 	if (millis() > 600000){
 		//Serial.println("Sleep!");

@@ -49,8 +49,8 @@ bool flagReciveData = false, flagPowerUp = true, flagAlarmVoltage = false;      
 uint32_t myTimer1, myTimer2, myTimer3;   //Таймеры для loop
 
 const int CRITICAL_VOLTAGE = 10;              //Критически низкое напряжение на батарее
-const String ALLOW_PHONE_NUMBERS = "+79137857684";   // Белый список телефонов
-const String ALARM_PHONE = "+79137857684"; 
+const String ALLOW_PHONE_NUMBERS = "+79137777767";   // Белый список телефонов
+const String ALARM_PHONE = "+79137777767"; 
 
 String senderPhone;                        // Переменная для хранения номера отправителя
 String textSMS;
@@ -60,17 +60,17 @@ String serialStr;      //Строка для отправки ESP
 void(* resetFunc) (void) = 0;      //Функция перезагрузки
 
 //***************************Отправка команды модему******************************
-String SendATCommand(String _ATcommand, bool _waiting) {
+String SendATCommand(String ATcommand, bool waiting) {
   SIM800.begin(9600);                                         // Скорость обмена данными с модемом
   String _resp = "";                                              // Переменная для хранения результата
-  //Serial.println(_ATcommand);                                            // Дублируем команду в монитор порта
-  SIM800.println(_ATcommand);                                            // Отправляем команду модулю SIM
+  //Serial.println(ATcommand);                                            // Дублируем команду в монитор порта
+  SIM800.println(ATcommand);                                            // Отправляем команду модулю SIM
    
-  if (_waiting) {                                                  // Если необходимо дождаться ответа...
+  if (waiting) {                                                  // Если необходимо дождаться ответа...
     _resp = WaitResponse();                                       // ... ждем, когда будет передан ответ
     // Если Echo Mode выключен (ATE0), то эти 3 строки можно закомментировать
-    if (_resp.startsWith(_ATcommand)) {                                  // Убираем из ответа дублирующуюся команду
-      _resp = _resp.substring(_resp.indexOf("\r", _ATcommand.length()) + 2);
+    if (_resp.startsWith(ATcommand)) {                                  // Убираем из ответа дублирующуюся команду
+      _resp = _resp.substring(_resp.indexOf("\r", ATcommand.length()) + 2);
     }
     //Serial.println(_resp);                                        // Дублируем ответ в монитор порта
   }
@@ -99,7 +99,7 @@ String WaitResponse() {                                           //
 bool existenceMsg = false;                                              // Флаг наличия сообщений к удалению
 
 //**********************Составление сообщения о весе и времени***********************
-String ScaleSMS(){
+void ScaleDataToSMS(){
   int _timeHours = (RFTimer2 / 3600ul);
   int _timeMins = (RFTimer2 % 3600ul) / 60ul;
   int _timeSecs = (RFTimer2 % 3600ul) % 60ul;
@@ -115,9 +115,11 @@ String ScaleSMS(){
   textSMS += "\nHumidity: ";
   textSMS += data.humidity;
   textSMS += "%";
+  textSMS += "\nUbat: ";
+  textSMS += data.currentVoltage;
+  textSMS += "V."
   // Serial.print ("msgphone:" + senderPhone);
   // Serial.print (textSMS);
-  return textSMS;
 }
 //-----------------------------------------------------------------------------------
 
@@ -130,7 +132,7 @@ void SMSSelect(String _textReceivedSMS){
   
   if (_textReceivedSMS == "1" || _textReceivedSMS == "v" || _textReceivedSMS == "V")
   {
-   textSMS = ScaleSMS();
+    ScaleDataToSMS();
     SendSMS(senderPhone, textSMS);
     // Serial.println("Запрос веса!");
   }
@@ -147,13 +149,6 @@ void SMSSelect(String _textReceivedSMS){
   if (_textReceivedSMS == "3" || _textReceivedSMS == "s" || _textReceivedSMS == "S")
   {
     textSMS = SendATCommand("AT+CSQ", true);
-    SendSMS(senderPhone, textSMS);
-  }
-//+++++++++Напряжение на весах+++++++++++++
-  if (_textReceivedSMS == "4" || _textReceivedSMS == "u" || _textReceivedSMS == "U")
-  {
-    ////Serial.println("Запрос напряжения");
-    textSMS = ("Napryagenie na vesah: " + String(data.currentVoltage) + "V.");
     SendSMS(senderPhone, textSMS);
   }
 //+++++++++Напряжение на SIM800+++++++++++++
@@ -218,14 +213,14 @@ void CheckSMS (){
 //-----------------------------------------------------------------------------------
 
 // *****************************Парсим SMS*******************************
-void ParseSMS(String _receivedSMS) {                                   
+void ParseSMS(String receivedSMS) {                                   
   String _msgHeader  = "";
   String _textReceivedSMS    = "";
   // Serial.println("Parse!");
-  _receivedSMS = _receivedSMS.substring(_receivedSMS.indexOf("+CMGR: "));
-  _msgHeader = _receivedSMS.substring(0, _receivedSMS.indexOf("\r"));            // Выдергиваем телефон
+  receivedSMS = receivedSMS.substring(receivedSMS.indexOf("+CMGR: "));
+  _msgHeader = receivedSMS.substring(0, receivedSMS.indexOf("\r"));            // Выдергиваем телефон
 
-  _textReceivedSMS = _receivedSMS.substring(_msgHeader.length() + 2);
+  _textReceivedSMS = receivedSMS.substring(_msgHeader.length() + 2);
   _textReceivedSMS = _textReceivedSMS.substring(0, _textReceivedSMS.lastIndexOf("OK"));  // Выдергиваем текст SMS
   _textReceivedSMS.trim();
 
@@ -248,11 +243,11 @@ void ParseSMS(String _receivedSMS) {
 //-----------------------------------------------------------------------------------
 
 //****************************отправка SMS**************************************
-void SendSMS(String _receiverPhone, String _textSMS)
+void SendSMS(String receiverPhone, String textSMS)
 {
-  // Serial.println("SendSMS!   " + _receiverPhone+"    " + _textSMS);
-  SendATCommand("AT+CMGS=\"" + _receiverPhone + "\"", true);             // Переходим в режим ввода текстового сообщения
-  SendATCommand(_textSMS + "\r\n" + (String)((char)26), true);   // После текста отправляем перенос строки и Ctrl+Z
+  // Serial.println("SendSMS!   " + receiverPhone+"    " + _textSMS);
+  SendATCommand("AT+CMGS=\"" + receiverPhone + "\"", true);             // Переходим в режим ввода текстового сообщения
+  SendATCommand(textSMS + "\r\n" + (String)((char)26), true);   // После текста отправляем перенос строки и Ctrl+Z
 }
 //-----------------------------------------------------------------------------------
   

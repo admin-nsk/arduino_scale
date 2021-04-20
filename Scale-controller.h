@@ -104,6 +104,7 @@ void SendData(){
     //Serial.println(data.weight);
     data.count = _counter;
     NRF.write(&data, sizeof(data));
+    NRF.startListening();
     if(!NRF.available()){                     //если получаем пустой ответ
     }
 	  else{  
@@ -114,7 +115,8 @@ void SendData(){
           _counter = 50;
         }
       }
-    }  
+    }
+  NRF.stopListening();  
 	delay(1000);
 	_counter++;
   }

@@ -49,8 +49,8 @@ bool flagReciveData = false, flagPowerUp = true, flagAlarmVoltage = false;      
 uint32_t myTimer1, myTimer2, myTimer3;   //Таймеры для loop
 
 const int CRITICAL_VOLTAGE = 10;              //Критически низкое напряжение на батарее
-const String ALLOW_PHONE_NUMBERS = "+79137777767";   // Белый список телефонов
-const String ALARM_PHONE = "+79137777767"; 
+const String ALLOW_PHONE_NUMBERS = "+79137857684";   // Белый список телефонов
+const String ALARM_PHONE = "+79137857684"; 
 
 String senderPhone;                        // Переменная для хранения номера отправителя
 String textSMS;
@@ -117,7 +117,7 @@ void ScaleDataToSMS(){
   textSMS += "%";
   textSMS += "\nUbat: ";
   textSMS += data.currentVoltage;
-  textSMS += "V."
+  textSMS += "V.";
   // Serial.print ("msgphone:" + senderPhone);
   // Serial.print (textSMS);
 }
@@ -176,7 +176,7 @@ void SMSSelect(String _textReceivedSMS){
 
 //**************************Проверка новых СМС***************************************
 void CheckSMS (){
-   //Serial.println("CheckSMS!");
+   Serial.println("CheckSMS!");
     do {
       _response = SendATCommand("AT+CMGL=\"REC UNREAD\",1", true);// Отправляем запрос чтения непрочитанных сообщений
       if (_response.indexOf("+CMGL: ") > -1) {                    // Если есть хоть одно, получаем его индекс
@@ -228,8 +228,8 @@ void ParseSMS(String receivedSMS) {
   int _secondIndex = _msgHeader.indexOf("\",\"", _firstIndex);
   senderPhone = _msgHeader.substring(_firstIndex, _secondIndex);
 
-  // Serial.println("Phone: " + senderPhone);                       // Выводим номер телефона
-  // Serial.println("Message: " + _textReceivedSMS);                      // Выводим текст SMS
+  Serial.println("Phone: " + senderPhone);                       // Выводим номер телефона
+  Serial.println("Message: " + _textReceivedSMS);                      // Выводим текст SMS
 
   if (senderPhone.length() > 6 && ALLOW_PHONE_NUMBERS.indexOf(senderPhone) > -1) { // Если телефон в белом списке, то...
     //Serial.println("SMSSelectIN!");
@@ -245,7 +245,7 @@ void ParseSMS(String receivedSMS) {
 //****************************отправка SMS**************************************
 void SendSMS(String receiverPhone, String textSMS)
 {
-  // Serial.println("SendSMS!   " + receiverPhone+"    " + _textSMS);
+  Serial.println("SendSMS!   " + receiverPhone+"    " + textSMS);
   SendATCommand("AT+CMGS=\"" + receiverPhone + "\"", true);             // Переходим в режим ввода текстового сообщения
   SendATCommand(textSMS + "\r\n" + (String)((char)26), true);   // После текста отправляем перенос строки и Ctrl+Z
 }
@@ -253,14 +253,17 @@ void SendSMS(String receiverPhone, String textSMS)
   
 //***************************Получение данных от весов**************************
 void ReadDataScl (){
+  NRF.startListening();
   // Serial.println("ReadData!");
   while(NRF.available()){    // слушаем эфир со всех труб
     NRF.read( &data, sizeof(data) );         // чиатем входящий сигнал
+    Serial.print("Recieved: "); Serial.println(data.count);
+    Serial.print("weight: ");Serial.println(data.weight);
     NRF.writeAckPayload(1,&data, sizeof(data) );  // отправляем обратно то что приняли
-    // Serial.print("Recieved: "); Serial.println(data.count);
-    // Serial.print("weight: ");Serial.println(data.weight);
     // получаем из миллиса часы, минуты и секунды работы программы 
     // часы не ограничены, т.е. аптайм
+    // NRF.stopListening();
+    // NRF.write(&data, sizeof(data));
     RFTimer = millis(); 
     flagReciveData = false;
     // Serial.print("Ubat: ");Serial.println(data.currentVoltage); 
@@ -321,7 +324,7 @@ void NRFinit()
   NRF.enableAckPayload();    //разрешить отсылку данных в ответ на входящий сигнал
   NRF.setPayloadSize(32);     //размер пакета, в байтах
 
-  NRF.openReadingPipe(1,address[1]);      //хотим слушать трубу 0
+  NRF.openReadingPipe(1,address[5]);      //хотим слушать трубу 0
   NRF.setChannel(0x65);  //выбираем канал (в котором нет шумов!)
 
   NRF.setPALevel (RF24_PA_MAX); //уровень мощности передатчика. На выбор RF24_PA_MIN, RF24_PA_LOW, RF24_PA_HIGH, RF24_PA_MAX

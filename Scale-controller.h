@@ -103,22 +103,26 @@ void SendData(){
     //Serial.println(counter);
     //Serial.println(data.weight);
     data.count = _counter;
-    NRF.write(&data, sizeof(data));
-    NRF.startListening();
-    if(!NRF.available()){                     //если получаем пустой ответ
-    }
-	  else{  
-      if(NRF.available()) {                      // если в ответе что-то есть
-        NRF.read(&_answer, sizeof(_answer));                  // читаем
-        Serial.print("Ответ "); Serial.println(_answer.count);
-        if (data.weight == _answer.weight){
-          _counter = 50;
-        }
+    if (NRF.write(&data, sizeof(data))){
+      Serial.println("Приемник получил пакет");
+      _counter = 50;
+      if(!NRF.available()){                     //если получаем пустой ответ
+        Serial.print("Пустой ответ");
+
+      }else{  
+          while(NRF.available() ) {                   
+            NRF.read(&_answer, sizeof(_answer));                  // читаем
+            Serial.print("Ответ "); Serial.println(_answer.count);
+            if (data.weight == _answer.weight){
+              _counter = 50;
+            }
+          }
       }
+    } else {
+        //Serial.println("Приемник НЕ получил пакет");
     }
-  NRF.stopListening();  
-	delay(1000);
-	_counter++;
+	  delay(1000);
+	  _counter++;
   }
 NRF.powerDown(); 		//отключение NRF
 }
@@ -130,8 +134,8 @@ void GetTemp()
   //Serial.println("GetTempIN()>>>>>>>>>>>>>>");
   data.temp = SensorDHT.readTemperature();
   data.humidity = SensorDHT.readHumidity();
-  //Serial.print("TempIN: ");Serial.println(sendData.temp);
-  //Serial.print("HumidityIN: ");Serial.println(sendData.humidity);
+  Serial.print("TempIN: ");Serial.println(data.temp);
+  Serial.print("HumidityIN: ");Serial.println(data.humidity);
  }
 //-----------------------------------------------------------------------------------
 
@@ -161,7 +165,7 @@ void setup() {
   NRF.setRetries(0, 15);    //(время между попыткой достучаться, число попыток)
   NRF.enableAckPayload();    //разрешит отсылку данных в ответ на входящий сигнал
   NRF.setPayloadSize(32);     //размер пакета, в байтах
-  NRF.openWritingPipe(address[1]);   //мы - труба 0, открываем канал для передачи данных
+  NRF.openWritingPipe(address[5]);   //мы - труба 0, открываем канал для передачи данных
   NRF.setChannel(0x65);  //выбираем канал (в котором нет шумов!)
   NRF.setPALevel (RF24_PA_MAX); //уровень мощности передатчика. На выбор RF24_PA_MIN, RF24_PA_LOW, RF24_PA_HIGH, RF24_PA_MAX
   NRF.setDataRate (RF24_1MBPS); //скорость обмена. На выбор RF24_2MBPS, RF24_1MBPS, RF24_250KBPS

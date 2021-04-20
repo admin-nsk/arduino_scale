@@ -49,8 +49,8 @@ bool flagReciveData = false, flagPowerUp = true, flagAlarmVoltage = false;      
 uint32_t myTimer1, myTimer2, myTimer3;   //Таймеры для loop
 
 const int CRITICAL_VOLTAGE = 10;              //Критически низкое напряжение на батарее
-const String ALLOW_PHONE_NUMBERS = "+79137857684";   // Белый список телефонов
-const String ALARM_PHONE = "+79137857684"; 
+const String ALLOW_PHONE_NUMBERS = "+79137777777";   // Белый список телефонов
+const String ALARM_PHONE = "+79137777777"; 
 
 String senderPhone;                        // Переменная для хранения номера отправителя
 String textSMS;
